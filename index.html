@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Grid Guard 360</title>
+  <style>
+    :root {
+      --primary: #1a73e8;
+      --danger: #dc3545;
+      --warning: #ffc107;
+      --success: #28a745;
+      --light: #f8f9fa;
+      --dark: #343a40;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f2f5;
+      color: #333;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a73e8, #0d47a1);
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    header img {
+      height: 80px;
+      margin-right: 20px;
+    }
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr 3fr;
+      gap: 20px;
+    }
+
+    .control-panel, .poles-container, .notification-panel {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .pole-card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    .pole-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    .pole-status {
+      display: flex;
+      align-items: center;
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+
+    .status-normal {
+      background-color: rgba(40, 167, 69, 0.2);
+      color: var(--success);
+    }
+
+    .status-danger {
+      background-color: rgba(220, 53, 69, 0.2);
+      color: var(--danger);
+    }
+
+    .status-icon {
+      margin-right: 10px;
+      font-size: 20px;
+    }
+
+    .angle-meter {
+      margin: 15px 0;
+      height: 20px;
+      background-color: #e9ecef;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .angle-value {
+      height: 100%;
+      background: linear-gradient(90deg, var(--success), var(--warning), var(--danger));
+      border-radius: 10px;
+      transition: width 0.3s ease;
+    }
+
+    .emergency-alert {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background-color: var(--danger);
+      color: white;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .alert-item {
+      background-color: rgba(220, 53, 69, 0.1);
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      border-left: 4px solid var(--danger);
+      display: flex;
+      align-items: center;
+    }
+
+    .filter-options {
+      display: flex;
+      margin-bottom: 20px;
+      gap: 10px;
+    }
+
+    .filter-btn {
+      padding: 8px 16px;
+      background-color: var(--light);
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-btn:hover, .filter-btn.active {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .connection-status {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 5px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .connected {
+      background-color: rgba(40, 167, 69, 0.2);
+      color: var(--success);
+    }
+
+    .disconnected {
+      background-color: rgba(220, 53, 69, 0.2);
+      color: var(--danger);
+    }
+
+    @media (max-width: 768px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <!-- <img src="/api/placeholder/80/80" alt="Smart Grid Guard 360 Logo" /> -->
+      <h1> Grid Guard 360</h1>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="notification-panel">
+      <h2>Emergency Alerts</h2>
+      <div class="alert-list" id="alertList">
+        <div class="alert-item">
+          <div class="alert-item-icon">ℹ️</div>
+          <div>Waiting for pole data...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard">
+      <div class="control-panel">
+        <h2>Monitoring Controls</h2>
+        <div class="filter-options">
+          <button class="filter-btn active" data-filter="all">All Status</button>
+          <button class="filter-btn" data-filter="fallen">Fallen Status</button>
+          <button class="filter-btn" data-filter="normal">Normal Status</button>
+        </div>
+
+        <div class="system-status">
+          <h3>System Status</h3>
+          <p><strong>Pole ID:</strong> 1</p>
+          <p><strong>Last Update:</strong> <span id="lastUpdate">--</span></p>
+          <p><strong>Current Status:</strong> <span id="currentStatus">Waiting for data...</span></p>
+        </div>
+
+        <div id="connectionStatus" class="connection-status disconnected">
+          Not Connected
+        </div>
+      </div>
+
+      <div class="poles-container">
+        <h2>Pole Monitoring</h2>
+        <div id="poleCard" class="pole-card">
+          <h3 id="poleTitle">Electric Pole 1</h3>
+          <p><strong>Tilt Angle:</strong> <span id="tiltAngleText">Waiting for data...</span></p>
+          <div class="angle-meter">
+            <div id="angleBar" class="angle-value" style="width: 0%"></div>
+          </div>
+          <div id="statusBox" class="pole-status status-normal">
+            <span id="statusIcon" class="status-icon">⏳</span>
+            <span id="statusText">Waiting for data...</span>
+           
+          </div>
+          <p><strong>Latitude:</strong> <span id="lat">Loading...</span></p>
+          <p><strong>Longitude:</strong> <span id="lon">Loading...</span></p>
+          <div id="location">
+           
+            <p><strong>Location:</strong> <span id="location">Loading...</span></p>
+            <!-- Div of the location -->
+        </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+
+  <script>
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      // Show lat/lon
+      document.getElementById("lat").innerText = lat.toFixed(6);
+      document.getElementById("lon").innerText = lon.toFixed(6);
+      // Use Nominatim for reverse geocoding (no API key required)
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        const place = data.display_name;
+        document.getElementById("location").innerText = place;
+        
+      } catch (err) {
+        document.getElementById("location").innerText = "Failed to fetch location";
+        console.error(err);
+      }
+    }, (error) => {
+      console.error("Geolocation error:", error);
+      document.getElementById("lat").innerText = "Unavailable";
+      document.getElementById("lon").innerText = "Unavailable";
+      document.getElementById("location").innerText = "Permission denied or unavailable";
+    });
+    const poleCard = document.getElementById("poleCard");
+    const angleBar = document.getElementById("angleBar");
+    const statusBox = document.getElementById("statusBox");
+    const statusText = document.getElementById("statusText");
+    const statusIcon = document.getElementById("statusIcon");
+    const tiltAngleText = document.getElementById("tiltAngleText");
+    const alertList = document.getElementById("alertList");
+    const lastUpdateEl = document.getElementById("lastUpdate");
+    const currentStatusEl = document.getElementById("currentStatus");
+    const connectionStatusEl = document.getElementById("connectionStatus");
+    const filterButtons = document.querySelectorAll(".filter-btn");
+  
+    let poleData = {
+      id: 1,
+      tiltAngle: null,
+      status: null,
+      lastUpdate: null
+    };
+  
+    let currentFilter = "all";
+    let isConnected = false;
+  
+    filterButtons.forEach(button => {
+      button.addEventListener("click", function () {
+        filterButtons.forEach(btn => btn.classList.remove("active"));
+        this.classList.add("active");
+        currentFilter = this.getAttribute("data-filter");
+        updatePoleDisplay();
+      });
+    });
+  
+    function updatePoleCard(tiltAngle, status) {
+      tiltAngleText.textContent = `${tiltAngle}°`;
+      let anglePercent = (tiltAngle / 45) * 100;
+      angleBar.style.width = `${Math.min(anglePercent, 100)}%`;
+  
+      // Reset status box
+      statusBox.className = "pole-status";
+      statusText.textContent = "Normal";
+      statusIcon.textContent = "✓";
+  
+      const existingAlert = document.querySelector(".emergency-alert");
+      if (existingAlert) existingAlert.remove();
+  
+      if (status === "Fallen") {
+        statusBox.classList.add("status-danger");
+        statusText.textContent = "FALLEN";
+        statusIcon.textContent = "❗";
+  
+        const emergencyAlert = document.createElement("div");
+        emergencyAlert.className = "emergency-alert";
+        emergencyAlert.textContent = "!";
+        poleCard.appendChild(emergencyAlert);
+      } else if (status === "Tilting") {
+        statusBox.classList.add("status-warning");
+        statusText.textContent = "Tilting";
+        statusIcon.textContent = "⚠️";
+      } else {
+        statusBox.classList.add("status-normal");
+      }
+    }
+  
+    function updateAlerts() {
+      alertList.innerHTML = "";
+  
+      if (!poleData.status) {
+        alertList.innerHTML = `<div class="alert-item"><div class="alert-item-icon">ℹ️</div><div>Waiting for pole data...</div></div>`;
+        return;
+      }
+  
+      if (poleData.status === "Normal") {
+        alertList.innerHTML = `<div class="alert-item" style="border-left: 4px solid var(--success); background-color: rgba(40, 167, 69, 0.1);"><div class="alert-item-icon" style="color: var(--success);">✓</div><div>All systems normal. No alerts at this time.</div></div>`;
+      } else {
+        alertList.innerHTML = `<div class="alert-item"><div class="alert-item-icon">⚠️</div><div>ALERT: Electric pole ${poleData.id} status: ${poleData.status} (Tilt angle: ${poleData.tiltAngle}°)</div></div>`;
+      }
+    }
+  
+    function updatePoleDisplay() {
+      const shouldShow =
+        currentFilter === "all" ||
+        (currentFilter === "fallen" && poleData.status === "Fallen") ||
+        (currentFilter === "normal" && poleData.status === "Normal");
+  
+      poleCard.style.display = shouldShow ? "block" : "none";
+  
+      lastUpdateEl.textContent = poleData.lastUpdate?.toLocaleTimeString() || "--";
+      currentStatusEl.textContent = {
+        "Fallen": "CRITICAL - POLE FALLEN",
+        "Tilting": "TILTING - Monitor Required",
+        "Normal": "Normal"
+      }[poleData.status] || "Waiting for data...";
+  
+      currentStatusEl.style.color = (poleData.status === "Fallen") ? "var(--danger)" : "";
+      currentStatusEl.style.fontWeight = (poleData.status === "Fallen") ? "bold" : "";
+    }
+  
+    function updateConnectionStatus(connected) {
+      isConnected = connected;
+      connectionStatusEl.textContent = connected ? "Connected to Server" : "Disconnected from Server";
+      connectionStatusEl.className = connected ? "connection-status connected" : "connection-status disconnected";
+    }
+  
+    function fetchPoleData() {
+      fetch("http://localhost:3000/api/poles/1")
+        .then(response => {
+          updateConnectionStatus(true);
+          if (!response.ok) throw new Error("Network response was not ok");
+          return response.json();
+        })
+        .then(data => {
+          poleData = {
+            id: 1,
+            tiltAngle: data.tilt_angle,
+            status: data.status,
+            lastUpdate: new Date()
+          };
+          updatePoleCard(poleData.tiltAngle, poleData.status);
+          updateAlerts();
+          updatePoleDisplay();
+        })
+        .catch(error => {
+          console.error("Fetch error:", error);
+          simulatePoleData();
+        });
+    }
+  
+    function simulatePoleData() {
+      const tilt = Math.floor(Math.random() * 60);
+      const status = tilt > 45 ? "Fallen" : tilt > 25 ? "Tilting" : "Normal";
+      poleData = {
+        id: 1,
+        tiltAngle: tilt,
+        status: status,
+        lastUpdate: new Date()
+      };
+      updatePoleCard(tilt, status);
+      updateAlerts();
+      updatePoleDisplay();
+    }
+  
+    window.addEventListener("load", () => {
+      fetch("http://localhost:3000/")
+        .then(() => {
+          updateConnectionStatus(true);
+          fetchPoleData();
+          setInterval(fetchPoleData, 5000);
+        })
+        .catch(() => {
+          updateConnectionStatus(false);
+          simulatePoleData();
+          setInterval(simulatePoleData, 5000);
+          alertList.innerHTML = `<div class="alert-item" style="border-left: 4px solid var(--warning); background-color: rgba(255, 193, 7, 0.1);"><div class="alert-item-icon" style="color: var(--warning);">ℹ️</div><div>Running in simulation mode. Connect to backend for real data.</div></div>`;
+        });
+    });
+    navigator.geolocation.getCurrentPosition((position) => {
+  const latitude = position.coords.latitude;
+  const longitude = position.coords.longitude;
+  console.log(latitude,"THe lattiude")
+  console.log("Longitude",longitude)
+    });
+  </script>
+</body>
+</html>

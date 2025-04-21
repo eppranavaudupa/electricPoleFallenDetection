@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Pole Location</title>
+</head>
+<body>
+  <h2>Smart Pole Location Info</h2>
+  <p><strong>Latitude:</strong> <span id="lat">Loading...</span></p>
+  <p><strong>Longitude:</strong> <span id="lon">Loading...</span></p>
+  <p><strong>Location:</strong> <span id="location">Loading...</span></p>
+
+  <script>
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      // Show lat/lon
+      document.getElementById("lat").innerText = lat.toFixed(6);
+      document.getElementById("lon").innerText = lon.toFixed(6);
+
+      // Use Nominatim for reverse geocoding (no API key required)
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        const place = data.display_name;
+        document.getElementById("location").innerText = place;
+      } catch (err) {
+        document.getElementById("location").innerText = "Failed to fetch location";
+        console.error(err);
+      }
+    }, (error) => {
+      console.error("Geolocation error:", error);
+      document.getElementById("lat").innerText = "Unavailable";
+      document.getElementById("lon").innerText = "Unavailable";
+      document.getElementById("location").innerText = "Permission denied or unavailable";
+    });
+    alert("ALERT! ALERT! ANAMARI BANTU")
+  </script>
+</body>
+</html>
