@@ -1,46 +1,81 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const dotenv = require("dotenv");
+const twilio = require("twilio");
+
+// Load environment variables
+dotenv.config();
+
+// Safety check for environment variables
+const {
+  TWILIO_ACCOUNT_SID,
+  TWILIO_AUTH_TOKEN,
+  TWILIO_PHONE_NUMBER,
+  EMERGENCY_CONTACT_NUMBER,
+  PORT = 3000
+} = process.env;
+
+if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER || !EMERGENCY_CONTACT_NUMBER) {
+  console.error("❌ Missing required environment variables in .env file.");
+  process.exit(1);
+}
+
+// Twilio setup
+const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
 
 const app = express();
-const PORT = 3000;
 
 // In-memory storage for pole data
-// let poleData = {
-//   id: 1,
-//   tilt_angle: 5,
-//   status: 'normal'
-// };
+let poleData = {
+  id: 1,
+  tilt_angle: 5,
+  status: 'normal'
+};
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// Root endpoint for health check
+// Health check
 app.get("/", (req, res) => {
   res.status(200).send({ status: "Smart Grid Guard 360 API is running" });
 });
 
-// Endpoint to receive tilt data from sensors
-app.post("/api/pole_status", (req, res) => {
+// Endpoint to receive tilt data
+app.post("/api/pole_status", async (req, res) => {
   const { tilt_angle, status } = req.body;
-  console.log(`Received data -> Tilt Angle: ${tilt_angle}°, Status: ${status}`);
+  const finalStatus = status || (tilt_angle > 30 ? 'fallen' : 'normal');
 
-  // Update our in-memory storage
+  console.log(`📡 Received data -> Tilt Angle: ${tilt_angle}°, Status: ${finalStatus}`);
+
+  // Update memory
   poleData = {
     id: 1,
-    tilt_angle: tilt_angle,
-    status: status || (tilt_angle > 30 ? 'fallen' : 'normal') // Auto-determine status if not provided
+    tilt_angle,
+    status: finalStatus
   };
+
+  // Emergency call if fallen
+  if (finalStatus.toLowerCase() === "fallen") {
+    try {
+      await client.calls.create({
+        to: EMERGENCY_CONTACT_NUMBER,
+        from: TWILIO_PHONE_NUMBER,
+        url: "http://demo.twilio.com/docs/voice.xml"
+      });
+      console.log("📞 Emergency call placed to responder!");
+    } catch (error) {
+      console.error("❌ Failed to make emergency call:", error.message);
+    }
+  }
 
   res.status(200).json({ message: "Data received successfully" });
 });
 
-// Endpoint to get pole data for the frontend
+// Endpoint to fetch pole data
 app.get("/api/poles/:id", (req, res) => {
   const poleId = parseInt(req.params.id);
-  
-  // Check if we have data for this pole
   if (poleId === 1) {
     res.status(200).json(poleData);
   } else {
@@ -50,5 +85,14 @@ app.get("/api/poles/:id", (req, res) => {
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+});
+
+// Catch unhandled exceptions to avoid crashes
+process.on("uncaughtException", (err) => {
+  console.error("🚨 Uncaught Exception:", err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("🚨 Unhandled Rejection:", reason);
 });
